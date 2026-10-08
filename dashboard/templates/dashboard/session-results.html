@@ -1,0 +1,56 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="card">
+  <h2>Race Pace Analysis - Laps</h2>
+</div>
+  <form>
+    <fieldset>
+      <legend>Circuit - Date</legend>
+
+      <label for="session_key">Session</label>
+      <select id="session_key">
+        <option value="">Select a session...</option>
+      </select>
+    </fieldset>
+
+    <fieldset>
+      <legend>Date Option</legend>
+      <label for="date_option">Range</label>
+      <select id="date_option">
+        <option value="all">All</option>
+        <option value="year">Year</option>
+        <option value="quarter">Quarter</option>
+        <option value="month">Month</option>
+        <option value="day">Day</option>
+      </select>
+    </fieldset>
+  </form>
+
+
+<script>
+async function loadSelectOptions() {
+    const selectElement = document.getElementById('session_key');
+    try {
+        const response = await fetch('/api/circuit-date/');
+        const result = await response.json();
+        const rawData = result.data;
+        
+        rawData.forEach(row => {
+            const option = document.createElement('option');
+            option.value = row.sesion_key;
+            option.textContent = `${row.circuit_short_name} - ${row.fecha}`;
+            selectElement.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading session options:', error);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", async function() {
+    await loadSelectOptions();
+
+});
+
+</script>
+{% endblock %}

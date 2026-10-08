@@ -1,0 +1,351 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="card">
+  <h2>Race Pace Analysis - Laps</h2>
+  
+  <form>
+    <fieldset>
+      <legend>Circuit - Date</legend>
+
+      <label for="session_key">Session</label>
+      <select id="session_key">
+        <option value="">Select a session...</option>
+      </select>
+    </fieldset>
+  </form>
+
+  <div class="card">
+    <h3>Session Summary Info</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Driver</th>
+          <th>Avg Duration (s)</th>
+          <th>Min Duration (s)</th>
+          <th>Max Duration (s)</th>
+          <th>Std Duration (s)</th>
+          <th>Avg Speed (km/h)</th>
+          <th>Min Speed (km/h)</th>
+          <th>Max Speed (km/h)</th>
+          <th>Std Speed (km/h)</th>
+        </tr>
+      </thead>
+      <tbody id="sessionInfoTableBody">
+        <!-- Rows dynamically populated via JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Race Pace - Lap Duration Analysis</h2>
+    
+      <!-- Duration Stats Bar -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-title">Session Avg Duration</span>
+        <span class="stat-value" id="avgDurationVal">-</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Fastest Lap</span>
+        <span class="stat-value" id="bestDurationVal">-</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Pace Std Dev (Consistency)</span>
+        <span class="stat-value" id="stdDurationVal">-</span>
+      </div>
+    </div>
+
+    <canvas id="racePaceChartDuration" height="120"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Race Pace - Standard Speed Analysis</h2>
+
+    <!-- Speed Stats Bar -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-title">Session Avg Speed</span>
+        <span class="stat-value" id="avgSpeedVal">-</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Top Speed</span>
+        <span class="stat-value" id="topSpeedVal">-</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">Speed Std Dev</span>
+        <span class="stat-value" id="stdSpeedVal">-</span>
+      </div>
+    </div>
+
+    <canvas id="racePaceChartSpeed" height="120"></canvas>
+  </div>
+
+</div>
+
+<script>
+// Global object to track active Chart.js instances
+const chartInstances = {
+    duration: null,
+    speed: null
+};
+
+const array_info_session = null;
+
+// Driver color palette
+const DRIVER_COLORS = [
+    '#e10600', '#00d2be', '#0600ef', '#ff8700', '#006f62', '#52006a',
+    '#c92d2d', '#2b4562', '#ff1801', '#0090ff', '#2293d1', '#7b2cbf'
+];
+
+async function loadSelectOptions() {
+    const selectElement = document.getElementById('session_key');
+    try {
+        const response = await fetch('/api/circuit-date/');
+        const result = await response.json();
+        const rawData = result.data;
+        
+        rawData.forEach(row => {
+            const option = document.createElement('option');
+            option.value = row.sesion_key;
+            option.textContent = `${row.circuit_short_name} - ${row.fecha}`;
+            selectElement.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading session options:', error);
+    }
+}
+
+// Reusable chart renderer function
+async function renderRacePaceChart(config) {
+    const {
+        sessionKey,
+        endpoint,
+        canvasId,
+        chartTypeKey,
+        valueField,
+        yAxisTitle,
+        unitLabel,
+        statsElementIds,
+        isLowerBetter
+    } = config;
+
+    if (!sessionKey) {
+        if (chartInstances[chartTypeKey]) {
+            chartInstances[chartTypeKey].destroy();
+            chartInstances[chartTypeKey] = null;
+        }
+        resetStatsCards(statsElementIds);
+        return;
+    }
+
+    try {
+        const response = await fetch(`${endpoint}${sessionKey}/`);
+        const result = await response.json();
+        const rawData = result.data;
+
+        if (!rawData || rawData.length === 0) {
+            if (chartInstances[chartTypeKey]) {
+                chartInstances[chartTypeKey].destroy();
+                chartInstances[chartTypeKey] = null;
+            }
+            resetStatsCards(statsElementIds);
+            return;
+        }
+
+        // Extract valid values and calculate statistical metrics
+        const lapNumbers = rawData.map(item => item.lap_number);
+        const minLap = Math.min(...lapNumbers);
+        const maxLap = Math.max(...lapNumbers);
+
+        const allValues = rawData
+            .map(item => parseFloat(item[valueField]))
+            .filter(val => !isNaN(val));
+
+        const overallAvg = allValues.reduce((sum, val) => sum + val, 0) / allValues.length;
+        const bestVal = isLowerBetter ? Math.min(...allValues) : Math.max(...allValues);
+        
+        // Standard Deviation calculation (Pace Consistency)
+        const variance = allValues.reduce((sum, val) => sum + Math.pow(val - overallAvg, 2), 0) / allValues.length;
+        const stdDev = Math.sqrt(variance);
+
+        // Update statistical UI cards
+        document.getElementById(statsElementIds.avg).textContent = `${overallAvg.toFixed(2)} ${unitLabel}`;
+        document.getElementById(statsElementIds.best).textContent = `${bestVal.toFixed(2)} ${unitLabel}`;
+        document.getElementById(statsElementIds.std).textContent = ` ± ${stdDev.toFixed(2)} ${unitLabel}`;
+
+        // Group data by driver
+        const drivers = {};
+        rawData.forEach(item => {
+            if (!drivers[item.driver_name]) {
+                drivers[item.driver_name] = [];
+            }
+            drivers[item.driver_name].push({
+                x: item.lap_number,
+                y: parseFloat(item[valueField])
+            });
+        });
+
+        // Build datasets for drivers
+        const datasets = Object.keys(drivers).map((driver, index) => {
+            const color = DRIVER_COLORS[index % DRIVER_COLORS.length];
+            return {
+                label: driver,
+                data: drivers[driver],
+                borderColor: color,
+                backgroundColor: color,
+                fill: false,
+                tension: 0.1
+            };
+        });
+
+        // Add overall average reference line dataset
+        datasets.unshift({
+            label: `Session Avg (${overallAvg.toFixed(2)} ${unitLabel})`,
+            data: [
+                { x: minLap, y: overallAvg },
+                { x: maxLap, y: overallAvg }
+            ],
+            borderColor: '#555555',
+            borderDash: [6, 6],
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false
+        });
+
+        const ctx = document.getElementById(canvasId).getContext('2d');
+
+        if (chartInstances[chartTypeKey]) {
+            chartInstances[chartTypeKey].destroy();
+        }
+
+        chartInstances[chartTypeKey] = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: datasets },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const val = context.parsed.y;
+                                return `${label}: ${val} ${unitLabel}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        min: minLap,
+                        max: maxLap,
+                        title: { display: true, text: 'Lap Number' }
+                    },
+                    y: {
+                        title: { display: true, text: yAxisTitle }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error(`Error rendering chart on ${canvasId}:`, error);
+    }
+}
+
+async function renderSessionInfoTable(sessionKey) {
+    const tableBody = document.getElementById('sessionInfoTableBody');
+
+    // Clear table if no session selected
+    if (!sessionKey) {
+        tableBody.innerHTML = '';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/race-pace/info/${sessionKey}/`);
+        const result = await response.json();
+        const rawData = result.data;
+
+        // Clear previous table rows
+        tableBody.innerHTML = '';
+
+        if (!rawData || rawData.length === 0) {
+            return;
+        }
+
+        // Populate table rows dynamically
+        rawData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.driver_name}</td>
+                <td>${row.avg_duration ? parseFloat(row.avg_duration).toFixed(3) : 'N/A'}</td>
+                <td>${row.min_duration ? parseFloat(row.min_duration).toFixed(3) : 'N/A'}</td>
+                <td>${row.max_duration ? parseFloat(row.max_duration).toFixed(3) : 'N/A'}</td>
+                <td> ± ${row.std_duration ? parseFloat(row.std_duration).toFixed(3) : 'N/A'}</td>
+                <td>${row.avg_speed ? parseFloat(row.avg_speed).toFixed(2) : 'N/A'}</td>
+                <td>${row.min_speed ? parseFloat(row.min_speed).toFixed(2) : 'N/A'}</td>
+                <td>${row.max_speed ? parseFloat(row.max_speed).toFixed(2) : 'N/A'}</td>
+                <td> ± ${row.std_speed ? parseFloat(row.std_speed).toFixed(3) : 'N/A'}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Error loading session summary table:', error);
+    }
+}
+
+function resetStatsCards(elementIds) {
+    document.getElementById(elementIds.avg).textContent = '-';
+    document.getElementById(elementIds.best).textContent = '-';
+    document.getElementById(elementIds.std).textContent = '-';
+}
+
+document.addEventListener("DOMContentLoaded", async function() {
+    await loadSelectOptions();
+
+    const selectElement = document.getElementById('session_key');
+    selectElement.addEventListener('change', function(event) {
+        const selectedSessionKey = event.target.value;
+
+        // Render Lap Duration Chart + Statistics
+        renderRacePaceChart({
+            sessionKey: selectedSessionKey,
+            endpoint: '/api/race-pace/lap-duration/',
+            canvasId: 'racePaceChartDuration',
+            chartTypeKey: 'duration',
+            valueField: 'lap_duration_seconds',
+            yAxisTitle: 'Lap Duration (Seconds)',
+            unitLabel: 's',
+            isLowerBetter: true,
+            statsElementIds: {
+                avg: 'avgDurationVal',
+                best: 'bestDurationVal',
+                std: 'stdDurationVal'
+            }
+        });
+
+        // Render Speed Chart + Statistics
+        renderRacePaceChart({
+            sessionKey: selectedSessionKey,
+            endpoint: '/api/race-pace/st-speed/',
+            canvasId: 'racePaceChartSpeed',
+            chartTypeKey: 'speed',
+            valueField: 'standard_speed',
+            yAxisTitle: 'Standard Speed (KM/H)',
+            unitLabel: 'km/h',
+            isLowerBetter: false,
+            statsElementIds: {
+                avg: 'avgSpeedVal',
+                best: 'topSpeedVal',
+                std: 'stdSpeedVal'
+            }
+        });
+
+        renderSessionInfoTable(selectedSessionKey);
+    });
+});
+
+</script>
+{% endblock %}
