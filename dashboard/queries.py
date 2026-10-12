@@ -216,11 +216,11 @@ def get_driver_info(driver_key):
             dp.full_name AS full_name,
             dr.circuit_short_name AS circuit,
             dt.fecha AS time_period,
+            dt.anio AS year,
             frs.`position` AS `position`,
             frs.number_of_laps AS laps,
             frs.gap_to_leader AS gap,
-            frs.points AS points,
-	        (frs.points > 25) as fast_lap
+            frs.points AS points
         FROM dw_formula1.fact_resultado_sesion frs 
         JOIN dw_formula1.dim_piloto dp ON dp.piloto_key = frs.piloto_key 
         JOIN dw_formula1.dim_reunion dr ON dr.reunion_key = frs.reunion_key
@@ -230,7 +230,7 @@ def get_driver_info(driver_key):
             frs.piloto_key = %s
             AND ds.session_type = 'Race'
         ORDER BY dt.fecha DESC;
-    """
+    """    
     with connection.cursor() as cursor:
         cursor.execute(sql, [driver_key])
         return dict_fetch_all(cursor) 

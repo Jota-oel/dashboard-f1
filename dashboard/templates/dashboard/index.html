@@ -7,20 +7,34 @@
   
   <form>
     <fieldset>
-      <legend>Select Driver</legend>
-      <label for="driver_key">Driver:</label>
-      <select id="driver_key">
-        <option value="1" selected>George Russell</option>
-        <option value="2">Max Verstappen</option>
-        <option value="3">Lewis Hamilton</option>
-        <option value="4">Charles Leclerc</option>
-        <option value="5">Oscar Piastri</option>
-      </select>
+      <legend>Select Driver & Year</legend>
+      <div style="display: flex; gap: 20px; align-items: center;">
+        <div>
+          <label for="driver_key">Driver:</label>
+          <select id="driver_key">
+            <option value="1" selected>Max Verstappen</option>
+            <option value="2">Charles Leclerc</option>
+            <option value="3">Oscar Piastri</option>
+            <option value="4">Lewis Hamilton</option>
+            <option value="5">George Russell</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="year">Year:</label>
+          <select id="year">
+            <option value="all">All Years</option>
+            <option value="2026" selected>2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+          </select>
+        </div>
+      </div>
     </fieldset>
   </form>
 </div>
 
-<!-- Contenedor centrado para la tabla -->
 <div class="single-card-container">
   <div class="card">
     <h3>Race Results Breakdown</h3>
@@ -34,11 +48,9 @@
             <th>Laps</th>
             <th>Gap to Leader</th>
             <th>Points</th>
-            <th>Fast Lap</th>
           </tr>
         </thead>
         <tbody id="driverInfoTableBody">
-          <!-- Se puebla dinámicamente -->
         </tbody>
       </table>
     </div>
@@ -46,78 +58,104 @@
 </div>
 
 <script>
-async function renderDriverInfoTable(driverKey) {
-    const tableBody = document.getElementById('driverInfoTableBody');
+let cachedDriverData = [];
 
+// Fetch initial data when changing driver
+async function fetchDriverData(driverKey) {
     if (!driverKey) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Select a driver</td></tr>';
+        cachedDriverData = [];
+        renderTableRows([]);
         return;
     }
 
     try {
         const response = await fetch(`/api/driver-info/${driverKey}/`);
         const result = await response.json();
-        const rawData = result.data;
+        cachedDriverData = result.data || [];
 
-        tableBody.innerHTML = '';
-
-        if (!rawData || rawData.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No race data found for this driver.</td></tr>';
-            return;
-        }
-
-        rawData.forEach((row) => {
-            const tr = document.createElement('tr');
-
-            // 1. Normalizar texto de la Posición
-            const rawPos = String(row.position || '').trim().toUpperCase();
-            let posText = rawPos;
-            const posNum = parseInt(rawPos.replace(/\D/g, ''));
-
-            if (!isNaN(posNum) && !rawPos.includes('P') && !['DNF', 'DNS', 'DSQ'].includes(rawPos)) {
-                posText = `P${posNum}`;
-            }
-
-            // Clases de color para Posición (P1 Oro, P2 Plata, P3 Bronce, P4-P10 Azul, DNF Rojo)
-            let posBadgeClass = 'pos-other';
-            if (posText === 'P1' || posNum === 1) posBadgeClass = 'pos-p1';
-            else if (posText === 'P2' || posNum === 2) posBadgeClass = 'pos-p2';
-            else if (posText === 'P3' || posNum === 3) posBadgeClass = 'pos-p3';
-            else if (['DNF', 'DNS', 'DSQ'].includes(posText)) posBadgeClass = 'pos-dnf';
-            else if (posNum >= 4 && posNum <= 10) posBadgeClass = 'pos-top10'; // Ahora Azul
-
-            // 2. Extraer valor numérico real de los Puntos
-            const cleanPointsStr = String(row.points || '0').replace(/[^0-9.-]/g, '');
-            const numPoints = parseFloat(cleanPointsStr) || 0;
-
-            const pointsBadgeClass = numPoints > 0 ? 'points-positive' : 'points-zero';
-            const pointsLabel = numPoints > 0 ? `+${numPoints} pts` : '0 pts';
-
-            tr.innerHTML = `
-                <td class="circuit-name">${row.circuit || 'N/A'}</td>
-                <td class="text-subtle">${row.time_period || 'N/A'}</td>
-                <td><span class="pos-badge ${posBadgeClass}">${posText || 'N/A'}</span></td>
-                <td>${row.laps !== null && row.laps !== undefined ? row.laps : 'N/A'}</td>
-                <td class="gap-cell">${row.gap || 'N/A'}</td>
-                <td><span class="points-badge ${pointsBadgeClass}">${pointsLabel}</span></td>
-                <td>${row.fast_lap || ' '}</td>
-            `;
-            tableBody.appendChild(tr);
-        });
+        // Apply current year filter on newly fetched data
+        applyYearFilterAndRender();
     } catch (error) {
-        console.error('Error loading driver info table:', error);
+        console.error('Error fetching driver career data:', error);
     }
 }
 
-document.addEventListener("DOMContentLoaded", async function() {
-    const selectElement = document.getElementById('driver_key');
-    
-    // 1. Carga automática del piloto seleccionado por defecto
-    renderDriverInfoTable(selectElement.value);
+// Filter cached array by selected year without API calls
+function applyYearFilterAndRender() {
+    const selectedYear = document.getElementById('year').value;
 
-    // 2. Event listener para cambios
-    selectElement.addEventListener('change', function(event) {
-        renderDriverInfoTable(event.target.value);
+    let filteredData = cachedDriverData;
+    if (selectedYear !== 'all') {
+        filteredData = cachedDriverData.filter(row => String(row.year) === String(selectedYear));
+    }
+
+    renderTableRows(filteredData);
+}
+
+// Render dynamic rows with styling
+function renderTableRows(data) {
+    const tableBody = document.getElementById('driverInfoTableBody');
+    tableBody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No race data available for this selection.</td></tr>';
+        return;
+    }
+
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Position Normalization & Badge Style
+        const rawPos = String(row.position || '').trim().toUpperCase();
+        let posText = rawPos;
+        const posNum = parseInt(rawPos.replace(/\D/g, ''));
+
+        if (!isNaN(posNum) && !rawPos.includes('P') && !['DNF', 'DNS', 'DSQ'].includes(rawPos)) {
+            posText = `P${posNum}`;
+        }
+
+        let posBadgeClass = 'pos-other';
+        if (posText === 'P1' || posNum === 1) posBadgeClass = 'pos-p1';
+        else if (posText === 'P2' || posNum === 2) posBadgeClass = 'pos-p2';
+        else if (posText === 'P3' || posNum === 3) posBadgeClass = 'pos-p3';
+        else if (['DNF', 'DNS', 'DSQ'].includes(posText)) posBadgeClass = 'pos-dnf';
+        else if (posNum >= 4 && posNum <= 10) posBadgeClass = 'pos-top10';
+
+        // Points Normalization & Badge Style
+        const cleanPointsStr = String(row.points || '0').replace(/[^0-9.-]/g, '');
+        const numPoints = parseFloat(cleanPointsStr) || 0;
+
+        const pointsBadgeClass = numPoints > 0 ? 'points-positive' : 'points-zero';
+        const pointsLabel = numPoints > 0 ? `+${numPoints} pts` : '0 pts';
+
+        tr.innerHTML = `
+            <td class="circuit-name">${row.circuit || 'N/A'}</td>
+            <td class="text-subtle">${row.time_period || 'N/A'}</td>
+            <td><span class="pos-badge ${posBadgeClass}">${posText || 'N/A'}</span></td>
+            <td>${row.laps !== null && row.laps !== undefined ? row.laps : 'N/A'}</td>
+            <td class="gap-cell">${row.gap || 'N/A'}</td>
+            <td><span class="points-badge ${pointsBadgeClass}">${pointsLabel}</span></td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
+
+// Event Listeners
+document.addEventListener("DOMContentLoaded", function() {
+    const driverSelect = document.getElementById('driver_key');
+    const yearSelect = document.getElementById('year');
+
+    // Initial load for default selected driver
+    fetchDriverData(driverSelect.value);
+
+    // Fetch new driver data when driver dropdown changes
+    driverSelect.addEventListener('change', function(e) {
+        fetchDriverData(e.target.value);
+    });
+
+    // Filter local memory cache instantly when year dropdown changes
+    yearSelect.addEventListener('change', function() {
+        applyYearFilterAndRender();
     });
 });
 </script>
