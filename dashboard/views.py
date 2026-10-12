@@ -7,6 +7,8 @@ from .queries import (
     get_circuit_session_date,
     get_race_st_speed,
     get_race_pace_info,
+    get_race_result_info,
+    get_driver_performance,
 )
 
 def index_view(request):
@@ -47,7 +49,28 @@ def api_circuit_date(request):
     return JsonResponse({'status': 'success', 'data': data})
 
 def api_race_pace_info(request, session_key):
-    """API endpoint for average, max and min to standard speed and lap duration in a specific session"""
+    """API endpoint for info to standard speed and lap duration in a specific session"""
     data = get_race_pace_info(session_key)
     return JsonResponse({'status': 'success', 'data': data})
+
+def api_race_result_info(request, session_key):
+    """API endpoint for info to session result in a specific session"""
+    data = get_race_result_info(session_key)
+    return JsonResponse({'status': 'success', 'data': data})
+
+def api_driver_performance(request):
+    """
+    API endpoint for driver performance aggregated metrics.
+    Accepts query parameter 'time_frame': 'year', 'quarter', 'month', 'all'
+    """
+    valid_time_frames = ['year', 'quarter', 'month', 'all']
+    time_frame = request.GET.get('time_frame', 'year')
+    
+    # Fallback to 'year' if an invalid time_frame is passed
+    if time_frame not in valid_time_frames:
+        time_frame = 'year'
+        
+    data = get_driver_performance(time_frame)
+    return JsonResponse({'status': 'success', 'data': data})
+
 

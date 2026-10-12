@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="card">
-  <h2>Race Pace Analysis - Laps</h2>
+  <h2>Race Pace Analysis</h2>
   
   <form>
     <fieldset>
@@ -15,12 +15,14 @@
     </fieldset>
   </form>
 
+  <div class="charts-grid">
   <div class="card">
     <h3>Session Summary Info</h3>
-    <table>
+    <table class="table-responsive">
       <thead>
         <tr>
           <th>Driver</th>
+          <th>Sum Duration (min)</th>
           <th>Avg Duration (s)</th>
           <th>Min Duration (s)</th>
           <th>Max Duration (s)</th>
@@ -32,6 +34,27 @@
         </tr>
       </thead>
       <tbody id="sessionInfoTableBody">
+        <!-- Rows dynamically populated via JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Result Summary Info</h3>
+    <table class="table-responsive">
+      <thead>
+        <tr>
+          <th>Driver</th>
+          <th>Total Laps</th>
+          <th>Total Duration</th>
+          <th>Gap to Leader</th>
+          <th>Position</th>
+          <th>Did Not Finish</th>
+          <th>Did Not Start</th>
+          <th>Disqualified</th>
+        </tr>
+      </thead>
+      <tbody id="sessionResultTableBody">
         <!-- Rows dynamically populated via JavaScript -->
       </tbody>
     </table>
@@ -80,6 +103,7 @@
 
     <canvas id="racePaceChartSpeed" height="120"></canvas>
   </div>
+  </div>
 
 </div>
 
@@ -94,7 +118,7 @@ const array_info_session = null;
 
 // Driver color palette
 const DRIVER_COLORS = [
-    '#e10600', '#00d2be', '#0600ef', '#ff8700', '#006f62', '#52006a',
+    '#e10600', '#006f62', '#00d2be', '#0600ef', '#ff8700', '#52006a',
     '#c92d2d', '#2b4562', '#ff1801', '#0090ff', '#2293d1', '#7b2cbf'
 ];
 
@@ -257,7 +281,6 @@ async function renderRacePaceChart(config) {
 async function renderSessionInfoTable(sessionKey) {
     const tableBody = document.getElementById('sessionInfoTableBody');
 
-    // Clear table if no session selected
     if (!sessionKey) {
         tableBody.innerHTML = '';
         return;
@@ -265,6 +288,66 @@ async function renderSessionInfoTable(sessionKey) {
 
     try {
         const response = await fetch(`/api/race-pace/info/${sessionKey}/`);
+        const result = await response.json();
+        const rawData = result.data;
+
+        tableBody.innerHTML = '';
+        if (!rawData || rawData.length === 0) return;
+
+        // Hallar la velocidad máxima para calcular el porcentaje de la barra de velocidad
+        const maxSpeedInSession = Math.max(...rawData.map(r => parseFloat(r.speed_avg) || 0));
+
+        rawData.forEach((row, index) => {
+            const driverColor = DRIVER_COLORS[index % DRIVER_COLORS.length];
+            const speedAvg = row.speed_avg ? parseFloat(row.speed_avg) : 0;
+            const speedBarWidth = maxSpeedInSession > 0 ? (speedAvg / maxSpeedInSession) * 100 : 0;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <div class="driver-cell">
+                        <span class="driver-badge" style="background-color: ${driverColor};"></span>
+                        <span>${row.driver_name}</span>
+                    </div>
+                </td>
+                
+                <td>${row.duration_sum ? (parseFloat(row.duration_sum) / 60).toFixed(2) : 'N/A'}</td>
+                <td>${row.duration_avg ? parseFloat(row.duration_avg).toFixed(3) : 'N/A'}</td>
+                <td>${row.duration_min ? parseFloat(row.duration_min).toFixed(3) : 'N/A'}</td>
+                <td>${row.duration_max ? parseFloat(row.duration_max).toFixed(3) : 'N/A'}</td>
+                <td>${row.duration_std ? parseFloat(row.duration_std).toFixed(3) : 'N/A'}</td>
+                
+                <td>
+                    <div class="metric-container">
+                        <span class="metric-value">${speedAvg ? speedAvg.toFixed(2) : 'N/A'}</span>
+                        <div class="mini-bar-bg">
+                            <div class="mini-bar-fill" style="width: ${speedBarWidth}%; background-color: ${driverColor};"></div>
+                        </div>
+                    </div>
+                </td>
+                
+                <td>${row.speed_min ? parseFloat(row.speed_min).toFixed(2) : 'N/A'}</td>
+                <td>${row.speed_max ? parseFloat(row.speed_max).toFixed(2) : 'N/A'}</td>
+                <td>${row.speed_std ? parseFloat(row.speed_std).toFixed(2) : 'N/A'}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Error loading session summary table:', error);
+    }
+}
+
+async function renderResultInfoTable(sessionKey) {
+    const tableBody = document.getElementById('sessionResultTableBody');
+
+    // Clear table if no session selected
+    if (!sessionKey) {
+        tableBody.innerHTML = '';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/race-result/info/${sessionKey}/`);
         const result = await response.json();
         const rawData = result.data;
 
@@ -276,18 +359,23 @@ async function renderSessionInfoTable(sessionKey) {
         }
 
         // Populate table rows dynamically
-        rawData.forEach(row => {
+        rawData.forEach((row, index) => {
             const tr = document.createElement('tr');
+            const driverColor = DRIVER_COLORS[index % DRIVER_COLORS.length];
             tr.innerHTML = `
-                <td>${row.driver_name}</td>
-                <td>${row.avg_duration ? parseFloat(row.avg_duration).toFixed(3) : 'N/A'}</td>
-                <td>${row.min_duration ? parseFloat(row.min_duration).toFixed(3) : 'N/A'}</td>
-                <td>${row.max_duration ? parseFloat(row.max_duration).toFixed(3) : 'N/A'}</td>
-                <td> ± ${row.std_duration ? parseFloat(row.std_duration).toFixed(3) : 'N/A'}</td>
-                <td>${row.avg_speed ? parseFloat(row.avg_speed).toFixed(2) : 'N/A'}</td>
-                <td>${row.min_speed ? parseFloat(row.min_speed).toFixed(2) : 'N/A'}</td>
-                <td>${row.max_speed ? parseFloat(row.max_speed).toFixed(2) : 'N/A'}</td>
-                <td> ± ${row.std_speed ? parseFloat(row.std_speed).toFixed(3) : 'N/A'}</td>
+                <td>
+                    <div class="driver-cell">
+                        <span class="driver-badge" style="background-color: ${driverColor};"></span>
+                        <span>${row.driver_name}</span>
+                    </div>
+                </td>
+                <td>${row.total_laps ? parseFloat(row.total_laps).toFixed(3) : 'N/A'}</td>
+                <td>${row.total_duration ? parseFloat(row.total_duration).toFixed(3) : 'N/A'}</td>
+                <td>${row.gap_to_leader ? parseFloat(row.gap_to_leader).toFixed(3) : 'N/A'}</td>
+                <td>${row.position ? parseFloat(row.position).toFixed(3) : 'N/A'}</td>
+                <td>${row.dnf ? 'true' : 'false'}</td>
+                <td>${row.dns ? 'true' : 'false'}</td>
+                <td>${row.dsq ? 'true' : 'false'}</td>
             `;
             tableBody.appendChild(tr);
         });
@@ -344,6 +432,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         });
 
         renderSessionInfoTable(selectedSessionKey);
+        renderResultInfoTable(selectedSessionKey);
     });
 });
 

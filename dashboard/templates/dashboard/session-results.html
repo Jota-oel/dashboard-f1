@@ -2,55 +2,138 @@
 
 {% block content %}
 <div class="card">
-  <h2>Race Pace Analysis - Laps</h2>
+    <h2>Driver Performance Analytics</h2>
+    <form>
+        <fieldset>
+            <legend>Filter Options</legend>
+            
+            <label for="date_option">Time Granularity:</label>
+            <select id="date_option">
+                <option value="year" selected>Yearly</option>
+                <option value="quarter">Quarterly</option>
+                <option value="month">Monthly</option>
+                <option value="all">Career (All Time)</option>
+            </select>
+
+            <label for="metric_option">Chart 5 Metric Selector:</label>
+            <select id="metric_option">
+                <option value="total_points" selected>Total Points</option>
+                <option value="total_laps">Total Laps</option>
+                <option value="total_hours">Total Hours Driven</option>
+                <option value="pos_avg">Average Position</option>
+                <option value="gap_avg">Average Gap to Leader</option>
+            </select>
+        </fieldset>
+    </form>
 </div>
-  <form>
-    <fieldset>
-      <legend>Circuit - Date</legend>
 
-      <label for="session_key">Session</label>
-      <select id="session_key">
-        <option value="">Select a session...</option>
-      </select>
-    </fieldset>
-
-    <fieldset>
-      <legend>Date Option</legend>
-      <label for="date_option">Range</label>
-      <select id="date_option">
-        <option value="all">All</option>
-        <option value="year">Year</option>
-        <option value="quarter">Quarter</option>
-        <option value="month">Month</option>
-        <option value="day">Day</option>
-      </select>
-    </fieldset>
-  </form>
-
+<!-- 5-Chart Grid Layout -->
+<div class="charts-grid">
+    <div class="card">
+        <h3>Total Points</h3>
+        <canvas id="chartPoints"></canvas>
+    </div>
+    <div class="card">
+        <h3>Laps Completed</h3>
+        <canvas id="chartLaps"></canvas>
+    </div>
+    <div class="card">
+        <h3>Average Finishing Position</h3>
+        <canvas id="chartPosition"></canvas>
+    </div>
+    <div class="card">
+        <h3>Retirements (DNF / DNS / DSQ)</h3>
+        <canvas id="chartReliability"></canvas>
+    </div>
+    <!-- 5th Chart (Centered) -->
+    <div class="card">
+        <h3 id="dynamicChartTitle">Dynamic Metric Comparison</h3>
+        <canvas id="chartDynamic"></canvas>
+    </div>
+</div>
 
 <script>
-async function loadSelectOptions() {
-    const selectElement = document.getElementById('session_key');
+let cachedPerformanceData = [];
+const chartInstances = {};
+
+async function fetchPerformanceData(timeFrame) {
     try {
-        const response = await fetch('/api/circuit-date/');
+        const response = await fetch(`/api/driver-performance/?time_frame=${timeFrame}`);
         const result = await response.json();
-        const rawData = result.data;
+        cachedPerformanceData = result.data;
         
-        rawData.forEach(row => {
-            const option = document.createElement('option');
-            option.value = row.sesion_key;
-            option.textContent = `${row.circuit_short_name} - ${row.fecha}`;
-            selectElement.appendChild(option);
-        });
+        renderAllCharts();
     } catch (error) {
-        console.error('Error loading session options:', error);
+        console.error('Error fetching performance data:', error);
     }
 }
 
-document.addEventListener("DOMContentLoaded", async function() {
-    await loadSelectOptions();
+function renderChart(canvasId, label, metricField, chartType = 'bar') {
+    const drivers = {};
+    const periodsSet = new Set();
 
+    cachedPerformanceData.forEach(item => {
+        periodsSet.add(item.time_period);
+        if (!drivers[item.driver_name]) {
+            drivers[item.driver_name] = {};
+        }
+        drivers[item.driver_name][item.time_period] = parseFloat(item[metricField]);
+    });
+
+    const labels = Array.from(periodsSet);
+    const datasets = Object.keys(drivers).map((driver, index) => {
+        const colors = ['#e10600', '#006f62', '#00d2be', '#0600ef', '#ff8700', '#52006a'];
+        const color = colors[index % colors.length];
+        return {
+            label: driver,
+            data: labels.map(period => drivers[driver][period] || 0),
+            backgroundColor: color,
+            borderColor: color,
+            borderWidth: 1
+        };
+    });
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+    }
+
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: chartType,
+        data: { labels: labels, datasets: datasets },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+function renderAllCharts() {
+    renderChart('chartPoints', 'Points', 'total_points');
+    renderChart('chartLaps', 'Laps', 'total_laps');
+    renderChart('chartPosition', 'Avg Position', 'pos_avg');
+    renderChart('chartReliability', 'DNF', 'total_dnf');
+    
+    // Render dynamic 5th chart based on second select option
+    const selectedMetric = document.getElementById('metric_option').value;
+    const metricText = document.getElementById('metric_option').options[document.getElementById('metric_option').selectedIndex].text;
+    document.getElementById('dynamicChartTitle').textContent = `Dynamic View: ${metricText}`;
+    renderChart('chartDynamic', metricText, selectedMetric, 'line');
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Initial fetch
+    fetchPerformanceData('year');
+
+    // Time frame change triggers new SQL query fetch
+    document.getElementById('date_option').addEventListener('change', function(e) {
+        fetchPerformanceData(e.target.value);
+    });
+
+    // Metric selector changes dynamic chart locally without fetch
+    document.getElementById('metric_option').addEventListener('change', function() {
+        renderAllCharts();
+    });
 });
-
 </script>
 {% endblock %}

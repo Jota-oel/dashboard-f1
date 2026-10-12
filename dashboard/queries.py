@@ -106,20 +106,107 @@ def get_race_pace_info(session_key):
     sql = """
         select
             dp.full_name as driver_name,
-            avg(fv.st_speed) as avg_speed,
-            max(fv.st_speed) as max_speed,
-            min(fv.st_speed) as min_speed,
-            std(fv.st_speed) as std_speed,
-            avg(fv.lap_duration) as avg_duration,
-            max(fv.lap_duration) as max_duration,
-            min(fv.lap_duration) as min_duration,
-            std(fv.lap_duration) as std_duration
+            avg(fv.st_speed) as speed_avg,
+            max(fv.st_speed) as speed_max,
+            min(fv.st_speed) as speed_min,
+            std(fv.st_speed) as speed_std,
+            sum(fv.lap_duration)/60 as duration_sum, 
+            avg(fv.lap_duration) as duration_avg,
+            max(fv.lap_duration) as duration_max,
+            min(fv.lap_duration) as duration_min,
+            std(fv.lap_duration) as duration_std
         from fact_vuelta fv
         join dim_piloto dp on dp.piloto_key = fv.piloto_key
         where fv.sesion_key = %s
-        group by fv.piloto_key;
+        group by fv.piloto_key
+        order by dp.full_name;
     """
     with connection.cursor() as cursor:
         cursor.execute(sql, [session_key])
         return dict_fetch_all(cursor) 
+
+def get_race_result_info(session_key):
+    sql = """
+        select
+	        dp.full_name as driver_name,
+	        frs.number_of_laps as total_laps,
+	        frs.session_total_duration/60 as total_duration,
+	        frs.gap_to_leader as gap_to_leader,
+	        frs.position as position,
+	        frs.dnf as dnf,
+	        frs.dns as dns,
+	        frs.dsq as dsq
+        from fact_resultado_sesion frs
+        join dim_tiempo dt on dt.tiempo_key = frs.tiempo_key
+        join dim_piloto dp on dp.piloto_key = frs.piloto_key
+        join dim_reunion dr on dr.reunion_key = frs.reunion_key
+        where frs.sesion_key = %s
+        group by frs.piloto_key
+        order by dp.full_name;
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [session_key])
+        return dict_fetch_all(cursor) 
+
+def get_driver_performance(time_frame='year'):
+    """
+    Fetch aggregated driver performance based on time granularity.
+    Supported time_frame: 'all', 'year', 'quarter', 'month'
+    """
+    # Safe mapping for dynamic grouping
+    time_frame_mapping = {
+        'all': {
+            'select': "'Career' AS time_period",
+            'group_by': "p.piloto_key, p.full_name",
+            'order_by': "p.full_name ASC"
+        },
+        'year': {
+            'select': "CAST(dt.anio AS CHAR) AS time_period",
+            'group_by': "dt.anio, p.piloto_key, p.full_name",
+            'order_by': "dt.anio ASC, p.full_name ASC"
+        },
+        'quarter': {
+            'select': "CONCAT(dt.anio, ' Q', dt.trimestre) AS time_period",
+            'group_by': "dt.anio, dt.trimestre, p.piloto_key, p.full_name",
+            'order_by': "dt.anio ASC, dt.trimestre ASC, p.full_name ASC"
+        },
+        'month': {
+            'select': "CONCAT(dt.anio, '-', LPAD(dt.mes, 2, '0')) AS time_period",
+            'group_by': "dt.anio, dt.mes, p.piloto_key, p.full_name",
+            'order_by': "dt.anio ASC, dt.mes ASC, p.full_name ASC"
+        }
+    }
+
+    config = time_frame_mapping.get(time_frame, time_frame_mapping['year'])
+
+    sql = f"""
+        SELECT 
+            p.full_name AS driver_name,
+            {config['select']},
+            COUNT(frs.sesion_key) AS sessions_count,
+            SUM(frs.number_of_laps) AS total_laps,
+            ROUND(SUM(frs.session_total_duration) / 3600.0, 2) AS total_hours,
+            ROUND(AVG(frs.gap_to_leader), 3) AS gap_avg,
+            ROUND(STD(frs.gap_to_leader), 3) AS gap_std,
+            ROUND(AVG(frs.position), 2) AS pos_avg,
+            ROUND(STD(frs.position), 2) AS pos_std,
+            SUM(frs.points) AS total_points,
+            ROUND(AVG(frs.points), 2) AS points_avg,
+            ROUND(STD(frs.points), 2) AS points_std,
+            SUM(frs.dnf) AS total_dnf,
+            SUM(frs.dns) AS total_dns,
+            SUM(frs.dsq) AS total_dsq
+        FROM dw_formula1.fact_resultado_sesion frs
+        JOIN dw_formula1.dim_tiempo dt ON dt.tiempo_key = frs.tiempo_key
+        JOIN dw_formula1.dim_piloto p ON p.piloto_key = frs.piloto_key
+        JOIN dw_formula1.dim_sesion ds ON ds.sesion_key = frs.sesion_key
+        WHERE ds.session_type = 'Race'
+        GROUP BY {config['group_by']}
+        ORDER BY {config['order_by']};
+    """
+
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
+        return dict_fetch_all(cursor)
+
 
