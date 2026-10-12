@@ -6,7 +6,6 @@
     <form>
         <fieldset>
             <legend>Filter Options</legend>
-            
             <label for="date_option">Time Granularity:</label>
             <select id="date_option">
                 <option value="year" selected>Yearly</option>
@@ -14,83 +13,182 @@
                 <option value="month">Monthly</option>
                 <option value="all">Career (All Time)</option>
             </select>
-
-            <label for="metric_option">Chart 5 Metric Selector:</label>
-            <select id="metric_option">
-                <option value="total_points" selected>Total Points</option>
-                <option value="total_laps">Total Laps</option>
-                <option value="total_hours">Total Hours Driven</option>
-                <option value="pos_avg">Average Position</option>
-                <option value="gap_avg">Average Gap to Leader</option>
-            </select>
         </fieldset>
     </form>
 </div>
 
-<!-- 5-Chart Grid Layout -->
+<!-- 5-Chart Grid -->
 <div class="charts-grid">
+    <!-- Chart 1: Points Metrics -->
     <div class="card">
-        <h3>Total Points</h3>
+        <h3>Points Performance (Avg, Std)</h3>
         <canvas id="chartPoints"></canvas>
     </div>
+
+    <!-- Chart 2: Gap Metrics -->
     <div class="card">
-        <h3>Laps Completed</h3>
-        <canvas id="chartLaps"></canvas>
+        <h3>Gap to Leader (Avg & Consistency)</h3>
+        <canvas id="chartGap"></canvas>
     </div>
+
+    <!-- Chart 3: Position Metrics -->
     <div class="card">
-        <h3>Average Finishing Position</h3>
+        <h3>Race Finish Positions (Avg & Std)</h3>
         <canvas id="chartPosition"></canvas>
     </div>
+
+    <!-- Chart 4: Sessions & Reliability -->
     <div class="card">
-        <h3>Retirements (DNF / DNS / DSQ)</h3>
-        <canvas id="chartReliability"></canvas>
+        <h3>Sessions & Reliability (DNFs, DNS, DSQ)</h3>
+        <canvas id="chartSessions"></canvas>
     </div>
-    <!-- 5th Chart (Centered) -->
+
+    <!-- Chart 5: Multi-Metric Custom Comparison (Centered) -->
     <div class="card">
-        <h3 id="dynamicChartTitle">Dynamic Metric Comparison</h3>
+        <h3>Custom Multi-Metric Comparison</h3>
+        
+        <!-- 4 Selectores para el Gráfico Dinámico -->
+        <div class="multi-select-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
+            <div>
+                <label for="metric_1" style="font-size: 0.8rem; font-weight: bold;">Metric 1:</label>
+                <select id="metric_1" class="dynamic-metric-select" style="width: 100%;">
+                    <option value="total_points">Total Points</option>
+                    <option value="total_hours">Total Hours</option>
+                    <option value="total_laps">Total Laps</option>
+                    <option value="total_out" selected>Total Out</option>
+                    <option value="sessions_count">Total Sessions</option>
+                    <option value="points_avg">Avg Points</option>
+                    <option value="points_std">Std Points</option>
+                    <option value="gap_avg">Avg Gap</option>
+                    <option value="gap_std">Std Gap</option>
+                    <option value="pos_avg">Avg Position</option>
+                    <option value="pos_std">Std Position</option>
+                    <option value="total_dnf">Total DNF</option>
+                    <option value="total_dns">Total DNS</option>
+                    <option value="total_dsq">Total DSQ</option>
+                </select>
+            </div>
+            <div>
+                <label for="metric_2" style="font-size: 0.8rem; font-weight: bold;">Metric 2:</label>
+                <select id="metric_2" class="dynamic-metric-select" style="width: 100%;">
+                    <option value="total_points" selected>Total Points</option>
+                    <option value="total_hours">Total Hours</option>
+                    <option value="total_laps">Total Laps</option>
+                    <option value="total_out">Total Out</option>
+                    <option value="sessions_count">Total Sessions</option>
+                    <option value="points_avg">Avg Points</option>
+                    <option value="points_std">Std Points</option>
+                    <option value="gap_avg">Avg Gap</option>
+                    <option value="gap_std">Std Gap</option>
+                    <option value="pos_avg">Avg Position</option>
+                    <option value="pos_std">Std Position</option>
+                    <option value="total_dnf">Total DNF</option>
+                    <option value="total_dns">Total DNS</option>
+                    <option value="total_dsq">Total DSQ</option>
+                </select>
+            </div>
+            <div>
+                <label for="metric_3" style="font-size: 0.8rem; font-weight: bold;">Metric 3:</label>
+                <select id="metric_3" class="dynamic-metric-select" style="width: 100%;">
+                    <option value="total_points">Total Points</option>
+                    <option value="total_hours" selected>Total Hours</option>
+                    <option value="total_laps">Total Laps</option>
+                    <option value="total_out">Total Out</option>
+                    <option value="sessions_count">Total Sessions</option>
+                    <option value="points_avg">Avg Points</option>
+                    <option value="points_std">Std Points</option>
+                    <option value="gap_avg">Avg Gap</option>
+                    <option value="gap_std">Std Gap</option>
+                    <option value="pos_avg">Avg Position</option>
+                    <option value="pos_std">Std Position</option>
+                    <option value="total_dnf">Total DNF</option>
+                    <option value="total_dns">Total DNS</option>
+                    <option value="total_dsq">Total DSQ</option>
+                </select>
+            </div>
+            <div>
+                <label for="metric_4" style="font-size: 0.8rem; font-weight: bold;">Metric 4:</label>
+                <select id="metric_4" class="dynamic-metric-select" style="width: 100%;">
+                    <option value="total_points">Total Points</option>
+                    <option value="total_hours">Total Hours</option>
+                    <option value="total_laps" selected>Total Laps</option>
+                    <option value="total_out">Total Out</option>
+                    <option value="sessions_count">Total Sessions</option>
+                    <option value="points_avg">Avg Points</option>
+                    <option value="points_std">Std Points</option>
+                    <option value="gap_avg">Avg Gap</option>
+                    <option value="gap_std">Std Gap</option>
+                    <option value="pos_avg">Avg Position</option>
+                    <option value="pos_std">Std Position</option>
+                    <option value="total_dnf">Total DNF</option>
+                    <option value="total_dns">Total DNS</option>
+                    <option value="total_dsq">Total DSQ</option>
+                </select>
+            </div>
+        </div>
+
         <canvas id="chartDynamic"></canvas>
     </div>
 </div>
-
 <script>
 let cachedPerformanceData = [];
 const chartInstances = {};
+
+const DRIVER_COLORS = [
+    '#e10600', '#006f62', '#00d2be', '#0600ef', '#ff8700', '#52006a',
+    '#c92d2d', '#2b4562', '#ff1801', '#0090ff', '#2293d1', '#7b2cbf'
+];
 
 async function fetchPerformanceData(timeFrame) {
     try {
         const response = await fetch(`/api/driver-performance/?time_frame=${timeFrame}`);
         const result = await response.json();
-        cachedPerformanceData = result.data;
-        
+        cachedPerformanceData = result.data || [];
+
         renderAllCharts();
     } catch (error) {
         console.error('Error fetching performance data:', error);
     }
 }
 
-function renderChart(canvasId, label, metricField, chartType = 'bar') {
-    const drivers = {};
+// Función genérica para renderizar gráficos agrupados por múltiples métricas
+function renderGroupedChart(canvasId, metricConfigs, chartType = 'line') {
+    if (!cachedPerformanceData.length) return;
+
     const periodsSet = new Set();
+    const drivers = {};
 
     cachedPerformanceData.forEach(item => {
         periodsSet.add(item.time_period);
         if (!drivers[item.driver_name]) {
             drivers[item.driver_name] = {};
         }
-        drivers[item.driver_name][item.time_period] = parseFloat(item[metricField]);
+        drivers[item.driver_name][item.time_period] = item;
     });
 
     const labels = Array.from(periodsSet);
-    const datasets = Object.keys(drivers).map((driver, index) => {
-        const colors = ['#e10600', '#006f62', '#00d2be', '#0600ef', '#ff8700', '#52006a'];
-        const color = colors[index % colors.length];
-        return {
-            label: driver,
-            data: labels.map(period => drivers[driver][period] || 0),
-            backgroundColor: color,
-            borderColor: color,
-            borderWidth: 1
-        };
+    const datasets = [];
+
+    Object.keys(drivers).forEach((driver, driverIdx) => {
+        const driverColor = DRIVER_COLORS[driverIdx % DRIVER_COLORS.length];
+
+        metricConfigs.forEach(mConfig => {
+            const dataPoints = labels.map(period => {
+                const rec = drivers[driver][period];
+                return rec ? parseFloat(rec[mConfig.field]) || 0 : 0;
+            });
+
+            datasets.push({
+                label: `${driver} (${mConfig.label})`,
+                data: dataPoints,
+                borderColor: driverColor,
+                backgroundColor: driverColor,
+                borderDash: mConfig.borderDash || [],
+                borderWidth: mConfig.borderWidth || 2,
+                fill: false,
+                tension: 0.1
+            });
+        });
     });
 
     const ctx = document.getElementById(canvasId).getContext('2d');
@@ -103,36 +201,90 @@ function renderChart(canvasId, label, metricField, chartType = 'bar') {
         data: { labels: labels, datasets: datasets },
         options: {
             responsive: true,
-            scales: { y: { beginAtZero: true } }
+            scales: {
+                x: { title: { display: true, text: 'Time Period' } },
+                y: { beginAtZero: true }
+            }
         }
     });
 }
 
+// Renderizar el 5º Gráfico dinámico basado en los 4 selecciones independientes
+function renderDynamicChart() {
+    const selectedMetrics = [
+        document.getElementById('metric_1').value,
+        document.getElementById('metric_2').value,
+        document.getElementById('metric_3').value,
+        document.getElementById('metric_4').value
+    ];
+
+    // Eliminar métricas duplicadas en caso de que se elija la misma más de una vez
+    const uniqueMetrics = [...new Set(selectedMetrics)];
+
+    const dashPatterns = [
+        [],        // Sólida (Métrica 1)
+        [6, 6],    // Punteada fina (Métrica 2)
+        [2, 2],    // Puntos (Métrica 3)
+        [10, 4]    // Trazo largo (Métrica 4)
+    ];
+
+    const metricConfigs = uniqueMetrics.map((fieldKey, index) => {
+        const selectElem = document.querySelector(`.dynamic-metric-select option[value="${fieldKey}"]`);
+        const labelText = selectElem ? selectElem.textContent : fieldKey;
+        return {
+            field: fieldKey,
+            label: labelText,
+            borderDash: dashPatterns[index % dashPatterns.length]
+        };
+    });
+
+    renderGroupedChart('chartDynamic', metricConfigs);
+}
+
 function renderAllCharts() {
-    renderChart('chartPoints', 'Points', 'total_points');
-    renderChart('chartLaps', 'Laps', 'total_laps');
-    renderChart('chartPosition', 'Avg Position', 'pos_avg');
-    renderChart('chartReliability', 'DNF', 'total_dnf');
-    
-    // Render dynamic 5th chart based on second select option
-    const selectedMetric = document.getElementById('metric_option').value;
-    const metricText = document.getElementById('metric_option').options[document.getElementById('metric_option').selectedIndex].text;
-    document.getElementById('dynamicChartTitle').textContent = `Dynamic View: ${metricText}`;
-    renderChart('chartDynamic', metricText, selectedMetric, 'line');
+    // 1. Chart 1: Variables de Puntos
+    renderGroupedChart('chartPoints', [
+        { field: 'points_avg', label: 'Avg', borderDash: [4, 4] },
+        { field: 'points_std', label: 'Std', borderDash: [2, 2] }
+    ]);
+
+    // 2. Chart 2: Variables de Gap
+    renderGroupedChart('chartGap', [
+        { field: 'gap_avg', label: 'Avg Gap', borderDash: [] },
+        { field: 'gap_std', label: 'Std Gap', borderDash: [5, 5] }
+    ]);
+
+    // 3. Chart 3: Variables de Posición
+    renderGroupedChart('chartPosition', [
+        { field: 'pos_avg', label: 'Avg Pos', borderDash: [] },
+        { field: 'pos_std', label: 'Std Pos', borderDash: [5, 5] }
+    ]);
+
+    // 4. Chart 4: Variables de Sesión y Retiros
+    renderGroupedChart('chartSessions', [
+        { field: 'sessions_count', label: 'Sessions', borderDash: [] },
+        { field: 'total_dnf', label: 'DNF', borderDash: [4, 4] },
+        { field: 'total_dns', label: 'DNS', borderDash: [2, 2] },
+        { field: 'total_dsq', label: 'DSQ', borderDash: [8, 2] }
+    ]);
+
+    // 5. Chart 5: Comparador dinámico de 4 métricas
+    renderDynamicChart();
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-    // Initial fetch
     fetchPerformanceData('year');
 
-    // Time frame change triggers new SQL query fetch
+    // Escuchar cambio en el filtro principal de tiempo
     document.getElementById('date_option').addEventListener('change', function(e) {
         fetchPerformanceData(e.target.value);
     });
 
-    // Metric selector changes dynamic chart locally without fetch
-    document.getElementById('metric_option').addEventListener('change', function() {
-        renderAllCharts();
+    // Escuchar cambios en cualquiera de los 4 selecciones del gráfico dinámico
+    document.querySelectorAll('.dynamic-metric-select').forEach(select => {
+        select.addEventListener('change', function() {
+            renderDynamicChart();
+        });
     });
 });
 </script>

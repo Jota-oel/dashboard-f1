@@ -183,7 +183,6 @@ def get_driver_performance(time_frame='year'):
         SELECT 
             p.full_name AS driver_name,
             {config['select']},
-            COUNT(frs.sesion_key) AS sessions_count,
             SUM(frs.number_of_laps) AS total_laps,
             ROUND(SUM(frs.session_total_duration) / 3600.0, 2) AS total_hours,
             ROUND(AVG(frs.gap_to_leader), 3) AS gap_avg,
@@ -195,7 +194,9 @@ def get_driver_performance(time_frame='year'):
             ROUND(STD(frs.points), 2) AS points_std,
             SUM(frs.dnf) AS total_dnf,
             SUM(frs.dns) AS total_dns,
-            SUM(frs.dsq) AS total_dsq
+            SUM(frs.dsq) AS total_dsq,
+            SUM(frs.dnf) + SUM(frs.dns) + SUM(frs.dsq) AS total_out,
+            COUNT(frs.sesion_key) - (SUM(frs.dnf) + SUM(frs.dns) + SUM(frs.dsq)) AS sessions_count
         FROM dw_formula1.fact_resultado_sesion frs
         JOIN dw_formula1.dim_tiempo dt ON dt.tiempo_key = frs.tiempo_key
         JOIN dw_formula1.dim_piloto p ON p.piloto_key = frs.piloto_key
@@ -209,4 +210,28 @@ def get_driver_performance(time_frame='year'):
         cursor.execute(sql)
         return dict_fetch_all(cursor)
 
+def get_driver_info(driver_key):
+    sql = """
+        SELECT
+            dp.full_name AS full_name,
+            dr.circuit_short_name AS circuit,
+            dt.fecha AS time_period,
+            frs.`position` AS `position`,
+            frs.number_of_laps AS laps,
+            frs.gap_to_leader AS gap,
+            frs.points AS points,
+	        (frs.points > 25) as fast_lap
+        FROM dw_formula1.fact_resultado_sesion frs 
+        JOIN dw_formula1.dim_piloto dp ON dp.piloto_key = frs.piloto_key 
+        JOIN dw_formula1.dim_reunion dr ON dr.reunion_key = frs.reunion_key
+        JOIN dw_formula1.dim_tiempo dt ON dt.tiempo_key = frs.tiempo_key
+        JOIN dw_formula1.dim_sesion ds ON ds.sesion_key = frs.sesion_key
+        WHERE 
+            frs.piloto_key = %s
+            AND ds.session_type = 'Race'
+        ORDER BY dt.fecha DESC;
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [driver_key])
+        return dict_fetch_all(cursor) 
 

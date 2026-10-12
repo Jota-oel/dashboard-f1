@@ -227,6 +227,111 @@ tbody tr:hover {
     }
 }
 
+/* --- Encabezado de la Tabla estilo F1 --- */
+.driver-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+.driver-table th {
+    background-color: #15151e;
+    color: #ffffff;
+    padding: 14px 16px;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-bottom: 3px solid #e10600;
+}
+
+.driver-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.driver-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.circuit-name {
+    font-weight: 700;
+    color: #15151e;
+}
+
+.text-subtle {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* --- Badges de Posición --- */
+.pos-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    min-width: 48px;
+    text-align: center;
+}
+
+/* P1: Oro */
+.pos-p1 {
+    background: linear-gradient(135deg, #ffd700, #f59e0b);
+    color: #000000;
+}
+
+/* P2: Plata */
+.pos-p2 {
+    background: linear-gradient(135deg, #e0e0e0, #9ca3af);
+    color: #000000;
+}
+
+/* P3: Bronce */
+.pos-p3 {
+    background: linear-gradient(135deg, #d97706, #78350f);
+    color: #ffffff;
+}
+
+/* P4 - P10: */
+.pos-top10 {
+    color: #000000;
+}
+
+/* P11 en adelante / Sin puntos */
+.pos-other {
+    color: #000000;
+}
+
+/* DNF / DNS / DSQ */
+.pos-dnf {
+    background-color: #ef4444;
+    color: #ffffff;
+    font-weight: 900;
+}
+
+/* --- Badges de Puntos (Verde Sólido para Puntos) --- */
+.points-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    text-align: center;
+}
+
+/* Verde destacado para los puntos obtenidos */
+.points-positive {
+    background-color: #10b981;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
+}
+
+/* 0 Puntos en gris tenue */
+.points-zero {
+    color: #9ca3af;
+    background-color: #f3f4f6;
+}
 /* Header & Navigation Bar */
 .main-header {
     background-color: #15151e; /* Color oscuro F1 */

@@ -1,10 +1,124 @@
 {% extends 'dashboard/base.html' %}
 
 {% block content %}
-<div class="card">
-    <h2>Drivers</h2>
+<!-- Selector de Piloto -->
+<div class="card card-centered">
+  <h2>Driver Career Results</h2>
+  
+  <form>
+    <fieldset>
+      <legend>Select Driver</legend>
+      <label for="driver_key">Driver:</label>
+      <select id="driver_key">
+        <option value="1" selected>George Russell</option>
+        <option value="2">Max Verstappen</option>
+        <option value="3">Lewis Hamilton</option>
+        <option value="4">Charles Leclerc</option>
+        <option value="5">Oscar Piastri</option>
+      </select>
+    </fieldset>
+  </form>
+</div>
+
+<!-- Contenedor centrado para la tabla -->
+<div class="single-card-container">
+  <div class="card">
+    <h3>Race Results Breakdown</h3>
+    <div class="table-responsive">
+      <table class="driver-table">
+        <thead>
+          <tr>
+            <th>Circuit</th>
+            <th>Date</th>
+            <th>Position</th>
+            <th>Laps</th>
+            <th>Gap to Leader</th>
+            <th>Points</th>
+            <th>Fast Lap</th>
+          </tr>
+        </thead>
+        <tbody id="driverInfoTableBody">
+          <!-- Se puebla dinámicamente -->
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
+async function renderDriverInfoTable(driverKey) {
+    const tableBody = document.getElementById('driverInfoTableBody');
+
+    if (!driverKey) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Select a driver</td></tr>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/driver-info/${driverKey}/`);
+        const result = await response.json();
+        const rawData = result.data;
+
+        tableBody.innerHTML = '';
+
+        if (!rawData || rawData.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No race data found for this driver.</td></tr>';
+            return;
+        }
+
+        rawData.forEach((row) => {
+            const tr = document.createElement('tr');
+
+            // 1. Normalizar texto de la Posición
+            const rawPos = String(row.position || '').trim().toUpperCase();
+            let posText = rawPos;
+            const posNum = parseInt(rawPos.replace(/\D/g, ''));
+
+            if (!isNaN(posNum) && !rawPos.includes('P') && !['DNF', 'DNS', 'DSQ'].includes(rawPos)) {
+                posText = `P${posNum}`;
+            }
+
+            // Clases de color para Posición (P1 Oro, P2 Plata, P3 Bronce, P4-P10 Azul, DNF Rojo)
+            let posBadgeClass = 'pos-other';
+            if (posText === 'P1' || posNum === 1) posBadgeClass = 'pos-p1';
+            else if (posText === 'P2' || posNum === 2) posBadgeClass = 'pos-p2';
+            else if (posText === 'P3' || posNum === 3) posBadgeClass = 'pos-p3';
+            else if (['DNF', 'DNS', 'DSQ'].includes(posText)) posBadgeClass = 'pos-dnf';
+            else if (posNum >= 4 && posNum <= 10) posBadgeClass = 'pos-top10'; // Ahora Azul
+
+            // 2. Extraer valor numérico real de los Puntos
+            const cleanPointsStr = String(row.points || '0').replace(/[^0-9.-]/g, '');
+            const numPoints = parseFloat(cleanPointsStr) || 0;
+
+            const pointsBadgeClass = numPoints > 0 ? 'points-positive' : 'points-zero';
+            const pointsLabel = numPoints > 0 ? `+${numPoints} pts` : '0 pts';
+
+            tr.innerHTML = `
+                <td class="circuit-name">${row.circuit || 'N/A'}</td>
+                <td class="text-subtle">${row.time_period || 'N/A'}</td>
+                <td><span class="pos-badge ${posBadgeClass}">${posText || 'N/A'}</span></td>
+                <td>${row.laps !== null && row.laps !== undefined ? row.laps : 'N/A'}</td>
+                <td class="gap-cell">${row.gap || 'N/A'}</td>
+                <td><span class="points-badge ${pointsBadgeClass}">${pointsLabel}</span></td>
+                <td>${row.fast_lap || ' '}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Error loading driver info table:', error);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", async function() {
+    const selectElement = document.getElementById('driver_key');
+    
+    // 1. Carga automática del piloto seleccionado por defecto
+    renderDriverInfoTable(selectElement.value);
+
+    // 2. Event listener para cambios
+    selectElement.addEventListener('change', function(event) {
+        renderDriverInfoTable(event.target.value);
+    });
+});
 </script>
 {% endblock %}

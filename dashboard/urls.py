@@ -16,4 +16,5 @@ urlpatterns = [
     path('api/race-pace/info/<int:session_key>/', views.api_race_pace_info, name="api_race_info"),
     path('api/race-result/info/<int:session_key>/', views.api_race_result_info, name="api_result_info"),
     path('api/driver-performance/', views.api_driver_performance, name="driver_performance"),
+    path('api/driver-info/<int:driver_key>/', views.api_driver_info, name="driver_info"),
 ]

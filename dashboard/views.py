@@ -9,6 +9,7 @@ from .queries import (
     get_race_pace_info,
     get_race_result_info,
     get_driver_performance,
+    get_driver_info,
 )
 
 def index_view(request):
@@ -58,6 +59,11 @@ def api_race_result_info(request, session_key):
     data = get_race_result_info(session_key)
     return JsonResponse({'status': 'success', 'data': data})
 
+def api_driver_info(request, driver_key):
+    """API endpoint for info to driver"""
+    data = get_driver_info(driver_key)
+    return JsonResponse({'status': 'success', 'data': data})
+    
 def api_driver_performance(request):
     """
     API endpoint for driver performance aggregated metrics.

@@ -16,49 +16,6 @@
   </form>
 
   <div class="charts-grid">
-  <div class="card">
-    <h3>Session Summary Info</h3>
-    <table class="table-responsive">
-      <thead>
-        <tr>
-          <th>Driver</th>
-          <th>Sum Duration (min)</th>
-          <th>Avg Duration (s)</th>
-          <th>Min Duration (s)</th>
-          <th>Max Duration (s)</th>
-          <th>Std Duration (s)</th>
-          <th>Avg Speed (km/h)</th>
-          <th>Min Speed (km/h)</th>
-          <th>Max Speed (km/h)</th>
-          <th>Std Speed (km/h)</th>
-        </tr>
-      </thead>
-      <tbody id="sessionInfoTableBody">
-        <!-- Rows dynamically populated via JavaScript -->
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h3>Result Summary Info</h3>
-    <table class="table-responsive">
-      <thead>
-        <tr>
-          <th>Driver</th>
-          <th>Total Laps</th>
-          <th>Total Duration</th>
-          <th>Gap to Leader</th>
-          <th>Position</th>
-          <th>Did Not Finish</th>
-          <th>Did Not Start</th>
-          <th>Disqualified</th>
-        </tr>
-      </thead>
-      <tbody id="sessionResultTableBody">
-        <!-- Rows dynamically populated via JavaScript -->
-      </tbody>
-    </table>
-  </div>
 
   <div class="card">
     <h2>Race Pace - Lap Duration Analysis</h2>
@@ -103,6 +60,51 @@
 
     <canvas id="racePaceChartSpeed" height="120"></canvas>
   </div>
+
+  <div class="card">
+    <h3>Session Summary Info</h3>
+    <table class="table-responsive">
+      <thead>
+        <tr>
+          <th>Driver</th>
+          <th>Sum Duration (min)</th>
+          <th>Avg Duration (s)</th>
+          <th>Min Duration (s)</th>
+          <th>Max Duration (s)</th>
+          <th>Std Duration (s)</th>
+          <th>Avg Speed (km/h)</th>
+          <th>Min Speed (km/h)</th>
+          <th>Max Speed (km/h)</th>
+          <th>Std Speed (km/h)</th>
+        </tr>
+      </thead>
+      <tbody id="sessionInfoTableBody">
+        <!-- Rows dynamically populated via JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Result Summary Info</h3>
+    <table class="table-responsive">
+      <thead>
+        <tr>
+          <th>Driver</th>
+          <th>Total Laps</th>
+          <th>Total Duration (h)</th>
+          <th>Gap to Leader (s)</th>
+          <th>Position</th>
+          <th>Did Not Finish</th>
+          <th>Did Not Start</th>
+          <th>Disqualified</th>
+        </tr>
+      </thead>
+      <tbody id="sessionResultTableBody">
+        <!-- Rows dynamically populated via JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
   </div>
 
 </div>
@@ -124,19 +126,34 @@ const DRIVER_COLORS = [
 
 async function loadSelectOptions() {
     const selectElement = document.getElementById('session_key');
+    
     try {
         const response = await fetch('/api/circuit-date/');
         const result = await response.json();
         const rawData = result.data;
         
-        rawData.forEach(row => {
+        selectElement.innerHTML = ''; // Limpiar opciones previas
+
+        if (!rawData || rawData.length === 0) return null;
+
+        rawData.forEach((row, index) => {
             const option = document.createElement('option');
             option.value = row.sesion_key;
             option.textContent = `${row.circuit_short_name} - ${row.fecha}`;
+            
+            // Preseleccionar el primer elemento correctamente
+            if (index === 0) {
+                option.selected = true;
+            }
+            
             selectElement.appendChild(option);
         });
+
+        // Retorna el valor del elemento preseleccionado
+        return selectElement.value;
     } catch (error) {
         console.error('Error loading session options:', error);
+        return null;
     }
 }
 
@@ -369,13 +386,13 @@ async function renderResultInfoTable(sessionKey) {
                         <span>${row.driver_name}</span>
                     </div>
                 </td>
-                <td>${row.total_laps ? parseFloat(row.total_laps).toFixed(3) : 'N/A'}</td>
+                <td>${row.total_laps ? parseFloat(row.total_laps) : 'N/A'}</td>
                 <td>${row.total_duration ? parseFloat(row.total_duration).toFixed(3) : 'N/A'}</td>
                 <td>${row.gap_to_leader ? parseFloat(row.gap_to_leader).toFixed(3) : 'N/A'}</td>
-                <td>${row.position ? parseFloat(row.position).toFixed(3) : 'N/A'}</td>
-                <td>${row.dnf ? 'true' : 'false'}</td>
-                <td>${row.dns ? 'true' : 'false'}</td>
-                <td>${row.dsq ? 'true' : 'false'}</td>
+                <td>${row.position ? parseFloat(row.position) : 'N/A'}</td>
+                <td>${row.dnf ? 'true' : ' '}</td>
+                <td>${row.dns ? 'true' : ' '}</td>
+                <td>${row.dsq ? 'true' : ' '}</td>
             `;
             tableBody.appendChild(tr);
         });
@@ -390,51 +407,61 @@ function resetStatsCards(elementIds) {
     document.getElementById(elementIds.std).textContent = '-';
 }
 
-document.addEventListener("DOMContentLoaded", async function() {
-    await loadSelectOptions();
+function updateDashboard(sessionKey) {
+    if (!sessionKey) return;
 
+    // Render Lap Duration Chart + Statistics
+    renderRacePaceChart({
+        sessionKey: sessionKey,
+        endpoint: '/api/race-pace/lap-duration/',
+        canvasId: 'racePaceChartDuration',
+        chartTypeKey: 'duration',
+        valueField: 'lap_duration_seconds',
+        yAxisTitle: 'Lap Duration (Seconds)',
+        unitLabel: 's',
+        isLowerBetter: true,
+        statsElementIds: {
+            avg: 'avgDurationVal',
+            best: 'bestDurationVal',
+            std: 'stdDurationVal'
+        }
+    });
+
+    // Render Speed Chart + Statistics
+    renderRacePaceChart({
+        sessionKey: sessionKey,
+        endpoint: '/api/race-pace/st-speed/',
+        canvasId: 'racePaceChartSpeed',
+        chartTypeKey: 'speed',
+        valueField: 'standard_speed',
+        yAxisTitle: 'Standard Speed (KM/H)',
+        unitLabel: 'km/h',
+        isLowerBetter: false,
+        statsElementIds: {
+            avg: 'avgSpeedVal',
+            best: 'topSpeedVal',
+            std: 'stdSpeedVal'
+        }
+    });
+
+    renderSessionInfoTable(sessionKey);
+    renderResultInfoTable(sessionKey);
+}
+
+document.addEventListener("DOMContentLoaded", async function() {
+    // Carga opciones y obtiene el ID de la primera sesión
+    const defaultSessionKey = await loadSelectOptions();
+
+    // Renderiza el dashboard inmediatamente con la sesión por defecto
+    if (defaultSessionKey) {
+        updateDashboard(defaultSessionKey);
+    }
+
+    // Escucha cambios futuros en el selector
     const selectElement = document.getElementById('session_key');
     selectElement.addEventListener('change', function(event) {
-        const selectedSessionKey = event.target.value;
-
-        // Render Lap Duration Chart + Statistics
-        renderRacePaceChart({
-            sessionKey: selectedSessionKey,
-            endpoint: '/api/race-pace/lap-duration/',
-            canvasId: 'racePaceChartDuration',
-            chartTypeKey: 'duration',
-            valueField: 'lap_duration_seconds',
-            yAxisTitle: 'Lap Duration (Seconds)',
-            unitLabel: 's',
-            isLowerBetter: true,
-            statsElementIds: {
-                avg: 'avgDurationVal',
-                best: 'bestDurationVal',
-                std: 'stdDurationVal'
-            }
-        });
-
-        // Render Speed Chart + Statistics
-        renderRacePaceChart({
-            sessionKey: selectedSessionKey,
-            endpoint: '/api/race-pace/st-speed/',
-            canvasId: 'racePaceChartSpeed',
-            chartTypeKey: 'speed',
-            valueField: 'standard_speed',
-            yAxisTitle: 'Standard Speed (KM/H)',
-            unitLabel: 'km/h',
-            isLowerBetter: false,
-            statsElementIds: {
-                avg: 'avgSpeedVal',
-                best: 'topSpeedVal',
-                std: 'stdSpeedVal'
-            }
-        });
-
-        renderSessionInfoTable(selectedSessionKey);
-        renderResultInfoTable(selectedSessionKey);
+        updateDashboard(event.target.value);
     });
 });
-
 </script>
 {% endblock %}
