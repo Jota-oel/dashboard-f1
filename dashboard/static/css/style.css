@@ -332,6 +332,7 @@ tbody tr:hover {
     color: #9ca3af;
     background-color: #f3f4f6;
 }
+
 /* Header & Navigation Bar */
 .main-header {
     background-color: #15151e; /* Color oscuro F1 */
@@ -351,17 +352,28 @@ tbody tr:hover {
     width: 100%;
 }
 
+/* Contenedor del Logo + Título */
 .brand {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
+/* Ajuste específico para el SVG de F1 */
+.brand svg {
+    height: 24px;
+    width: auto; /* Mantiene la proporción original de 1600x400 sin distorsionarlo */
+    display: block;
+    flex-shrink: 0;
+}
+
+/* Estilos para el texto Analytics */
 .brand-title {
-    color: #e10600;
-    font-size: 1.05rem;
+    color: #ffffff;
+    font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: 0.5px;
+    line-height: 1; /* Evita desfases verticales de alineación con el SVG */
 }
 
 .navbar {
